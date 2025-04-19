@@ -21,23 +21,15 @@ app.get("/api/users", async (req, res) => {
   }
 });
 
-app.post("/api/users/signin", async (req, res) => {
-  const { email, password, firstName, lastName, age, gender } = req.body;
+app.post("/signup", async (req, res) => {
+  const user = new User(req.body); // Create a new user instance with the request body
 
   try {
-    const user = new User({
-      email,
-      password,
-      firstName,
-      lastName,
-      age,
-      gender,
-    });
     await user.save(); // Save the user to the database
     return res.status(201).json({ message: "User created successfully" });
   } catch (error) {
     console.error("Error creating user:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
