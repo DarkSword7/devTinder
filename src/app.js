@@ -21,7 +21,7 @@ app.post("/signup", async (req, res) => {
     return res.status(201).json({ message: "User created successfully" });
   } catch (error) {
     console.error("Error creating user:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -36,7 +36,7 @@ app.get("/user", async (req, res) => {
     return res.status(200).json(user); // Return the user details
   } catch (error) {
     console.error("Error fetching user:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -50,7 +50,7 @@ app.get("/feed", async (req, res) => {
     return res.status(200).json(users); // Return the list of users
   } catch (error) {
     console.error("Error fetching users:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -65,18 +65,32 @@ app.delete("/user", async (req, res) => {
     return res.status(200).json({ message: "User deleted successfully" }); // Return success message
   } catch (error) {
     console.error("Error deleting user:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: error.message });
   }
 });
 
 // Update User API - PATCH /user - Update user details by ID
-app.patch("/user", async (req, res) => {
-  const { firstName, lastName, email, id } = req.body;
+app.patch("/user/:id", async (req, res) => {
+  const id = req.params?.id; // Extract user ID from request body
+  const data = req.body;
+
   try {
-    const user = await User.findByIdAndUpdate(id, {
-      firstName,
-      lastName,
-      email,
+    const allowedFields = ["age", "photoUrl", "bio", "skills"];
+    // Filter out fields that are not allowed to be updated
+    const filteredData = Object.keys(data).every((key) =>
+      allowedFields.includes(key)
+    );
+
+    if (!filteredData) {
+      throw new Error("Invalid fields in request body"); // Throw error if invalid fields are found
+    }
+
+    if (data?.skills.length > 5) {
+      throw new Error("Skills array should not exceed 5 items"); // Throw error if skills array exceeds 5 items
+    }
+
+    const user = await User.findByIdAndUpdate({ _id: id }, data, {
+      runValidators: true,
     }); // Find and update the user by ID
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -84,7 +98,7 @@ app.patch("/user", async (req, res) => {
     return res.status(200).json({ message: "User updated successfully" }); // Return success message
   } catch (error) {
     console.error("Error updating user:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: error.message });
   }
 });
 
