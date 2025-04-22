@@ -8,6 +8,11 @@ app.use(express.json()); // Middleware to parse JSON bodies
 
 const PORT = process.env.PORT || 3000;
 
+app.get("/", (req, res) => {
+  res.send("Welcome to the DevTinder API!"); // Simple welcome message
+});
+
+// Signup API - POST /signup - Create a new user
 app.post("/signup", async (req, res) => {
   const user = new User(req.body); // Create a new user instance with the request body
 
@@ -20,6 +25,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+// Find User API - POST /user - Fetch user details by email
 app.get("/user", async (req, res) => {
   const { email } = req.body;
   try {
@@ -44,6 +50,40 @@ app.get("/feed", async (req, res) => {
     return res.status(200).json(users); // Return the list of users
   } catch (error) {
     console.error("Error fetching users:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete User API - DELETE /user - Delete a user by ID
+app.delete("/user", async (req, res) => {
+  const { id } = req.body;
+  try {
+    const user = await User.findByIdAndDelete(id); // Find and delete the user by ID
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.status(200).json({ message: "User deleted successfully" }); // Return success message
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update User API - PATCH /user - Update user details by ID
+app.patch("/user", async (req, res) => {
+  const { firstName, lastName, email, id } = req.body;
+  try {
+    const user = await User.findByIdAndUpdate(id, {
+      firstName,
+      lastName,
+      email,
+    }); // Find and update the user by ID
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.status(200).json({ message: "User updated successfully" }); // Return success message
+  } catch (error) {
+    console.error("Error updating user:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
