@@ -1,7 +1,9 @@
 const express = require("express");
+const bcrypt = require("bcrypt");
 require("dotenv").config(); // Load environment variables from .env file
 const connectDB = require("./config/database");
 const User = require("./models/user");
+const { validateSignUpData } = require("./utils/validation");
 
 const app = express();
 app.use(express.json()); // Middleware to parse JSON bodies
@@ -14,9 +16,30 @@ app.get("/", (req, res) => {
 
 // Signup API - POST /signup - Create a new user
 app.post("/signup", async (req, res) => {
-  const user = new User(req.body); // Create a new user instance with the request body
-
   try {
+    // Validate request body using the validation function
+    validateSignUpData(req); // Validate the request body
+
+    const { firstName, lastName, email, password } = req.body;
+
+    // Check if the user already exists in the database
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" }); // Return error if user already exists
+    }
+
+    // Encrypt the password before saving to the database
+    const salt = await bcrypt.genSalt(10); // Generate a salt for hashing
+    const hashedPassword = await bcrypt.hash(password, salt); // Hash the password
+
+    // Create a new user instance with the request body
+    const user = new User({
+      firstName,
+      lastName,
+      email,
+      password: hashedPassword,
+    }); // Create a new user instance with the request body
+
     await user.save(); // Save the user to the database
     return res.status(201).json({ message: "User created successfully" });
   } catch (error) {
