@@ -48,6 +48,27 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+// Login API - POST /login - Authenticate a user
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body; // Extract email and password from request body
+  try {
+    // Check if the user exists in the database
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" }); // Return error if user not found
+    }
+    // Compare the provided password with the hashed password in the database
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+      return res.status(401).json({ message: "Invalid credentials" }); // Return error if password does not match
+    }
+    return res.status(200).json({ message: "Login successful" }); // Return success message
+  } catch (error) {
+    console.error("Error logging in:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 // Find User API - POST /user - Fetch user details by email
 app.get("/user", async (req, res) => {
   const { email } = req.body;
