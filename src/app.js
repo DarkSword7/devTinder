@@ -9,6 +9,7 @@ const connectDB = require("./config/database");
 const User = require("./models/user");
 
 const { validateSignUpData } = require("./utils/validation");
+const userAuth = require("./middleware/auth");
 
 const app = express();
 app.use(express.json()); // Middleware to parse JSON bodies
@@ -81,23 +82,21 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Profile API - GET /profile - Fetch user profile by ID
-app.get("/profile", async (req, res) => {
-  const token = req.cookies.token; // Extract the token from the cookie
-
-  if (!token) {
-    return res.status(401).json({ error: "Unauthorized" }); // Return error if token is not present
+// Logout API - POST /logout - Logout a user
+app.post("/logout", userAuth, async (req, res) => {
+  try {
+    res.clearCookie("token"); // Clear the token cookie
+    return res.status(200).json({ message: "Logout successful" }); // Return success message
+  } catch (error) {
+    console.error("Error logging out:", error);
+    return res.status(500).json({ error: error.message });
   }
+});
 
-  // Verify the token and extract user ID
-  const decoded = jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ error: "Unauthorized" }); // Return error if token is invalid
-    }
-    return decoded; // Return the decoded token
-  });
+// Profile API - GET /profile - Fetch user profile by ID
+app.get("/profile", userAuth, async (req, res) => {
+  const userId = req.user._id; // Extract user ID from the request object (set by userAuth middleware)
 
-  const userId = decoded._id; // Extract user ID from the decoded token
   try {
     // Find the user by ID and exclude the password field from the response
     const user = await User.findById(userId).select("-password");
@@ -112,7 +111,7 @@ app.get("/profile", async (req, res) => {
 });
 
 // Find User API - POST /user - Fetch user details by email
-app.get("/user", async (req, res) => {
+app.get("/user", userAuth, async (req, res) => {
   const { email } = req.body;
   try {
     const user = await User.findOne({ email }); // Find the user by email
@@ -127,7 +126,7 @@ app.get("/user", async (req, res) => {
 });
 
 // Feed API - GET /feed - Fetch all the users from the database
-app.get("/feed", async (req, res) => {
+app.get("/feed", userAuth, async (req, res) => {
   try {
     const users = await User.find({}); // Fetch all users from the database
     if (!users || users.length === 0) {
@@ -141,7 +140,7 @@ app.get("/feed", async (req, res) => {
 });
 
 // Delete User API - DELETE /user - Delete a user by ID
-app.delete("/user", async (req, res) => {
+app.delete("/user", userAuth, async (req, res) => {
   const { id } = req.body;
   try {
     const user = await User.findByIdAndDelete(id); // Find and delete the user by ID
@@ -156,7 +155,7 @@ app.delete("/user", async (req, res) => {
 });
 
 // Update User API - PATCH /user - Update user details by ID
-app.patch("/user/:id", async (req, res) => {
+app.patch("/user/:id", userAuth, async (req, res) => {
   const id = req.params?.id; // Extract user ID from request body
   const data = req.body;
 
