@@ -65,14 +65,13 @@ app.post("/login", async (req, res) => {
       return res.status(404).json({ error: "User not found" }); // Return error if user not found
     }
     // Compare the provided password with the hashed password in the database
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    const isPasswordMatch = await user.validatePassword(password);
+
     if (!isPasswordMatch) {
       return res.status(401).json({ error: "Invalid credentials" }); // Return error if password does not match
     }
     // create a JWT token and set it in the cookie
-    const token = await jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    }); // Create a JWT token with user ID and secret key
+    const token = await user.getJWT(); // Create a JWT token with user ID and secret key
 
     res.cookie("token", token, { httpOnly: true }); // Set the token in a cookie
     return res.status(200).json({ message: "Login successful" }); // Return success message
