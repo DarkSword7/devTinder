@@ -1,12 +1,18 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
+
 require("dotenv").config(); // Load environment variables from .env file
+
 const connectDB = require("./config/database");
 const User = require("./models/user");
+
 const { validateSignUpData } = require("./utils/validation");
 
 const app = express();
 app.use(express.json()); // Middleware to parse JSON bodies
+app.use(cookieParser()); // Middleware to parse cookies
 
 const PORT = process.env.PORT || 3000;
 
@@ -25,7 +31,7 @@ app.post("/signup", async (req, res) => {
     // Check if the user already exists in the database
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" }); // Return error if user already exists
+      return res.status(400).json({ error: "User already exists" }); // Return error if user already exists
     }
 
     // Encrypt the password before saving to the database
@@ -55,16 +61,52 @@ app.post("/login", async (req, res) => {
     // Check if the user exists in the database
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" }); // Return error if user not found
+      return res.status(404).json({ error: "User not found" }); // Return error if user not found
     }
     // Compare the provided password with the hashed password in the database
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
-      return res.status(401).json({ message: "Invalid credentials" }); // Return error if password does not match
+      return res.status(401).json({ error: "Invalid credentials" }); // Return error if password does not match
     }
+    // create a JWT token and set it in the cookie
+    const token = await jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    }); // Create a JWT token with user ID and secret key
+
+    res.cookie("token", token, { httpOnly: true }); // Set the token in a cookie
     return res.status(200).json({ message: "Login successful" }); // Return success message
   } catch (error) {
     console.error("Error logging in:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Profile API - GET /profile - Fetch user profile by ID
+app.get("/profile", async (req, res) => {
+  const token = req.cookies.token; // Extract the token from the cookie
+
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized" }); // Return error if token is not present
+  }
+
+  // Verify the token and extract user ID
+  const decoded = jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: "Unauthorized" }); // Return error if token is invalid
+    }
+    return decoded; // Return the decoded token
+  });
+
+  const userId = decoded._id; // Extract user ID from the decoded token
+  try {
+    // Find the user by ID and exclude the password field from the response
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" }); // Return error if user not found
+    }
+    return res.status(200).json(user); // Return the user profile
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
     return res.status(500).json({ error: error.message });
   }
 });
