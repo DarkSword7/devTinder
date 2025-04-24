@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint \"./src/**/*.js\"",
     "start": "node src/app.js",
     "dev": "nodemon src/app.js"
   },
@@ -24,5 +25,10 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
     "validator": "^13.15.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.1",
+    "eslint": "^9.25.1",
+    "globals": "^16.0.0"
   }
 }
